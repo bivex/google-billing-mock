@@ -20,17 +20,6 @@
     "expiry_offset_seconds": -86400
   },
   {
-    "name": "canceled_user",
-    "token_prefix": "canceled",
-    "type": "subscription",
-    "purchase_state": 1,
-    "payment_state": 1,
-    "acknowledgement_state": 1,
-    "auto_renewing": false,
-    "expiry_offset_seconds": -3600,
-    "cancel_reason": 0
-  },
-  {
     "name": "canceled_paid_period",
     "token_prefix": "canceled_active_",
     "type": "subscription",
@@ -39,6 +28,17 @@
     "acknowledgement_state": 1,
     "auto_renewing": false,
     "expiry_offset_seconds": 1296000,
+    "cancel_reason": 0
+  },
+  {
+    "name": "canceled_user",
+    "token_prefix": "canceled",
+    "type": "subscription",
+    "purchase_state": 1,
+    "payment_state": 1,
+    "acknowledgement_state": 1,
+    "auto_renewing": false,
+    "expiry_offset_seconds": -3600,
     "cancel_reason": 0
   },
   {
