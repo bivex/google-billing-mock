@@ -16,7 +16,7 @@ A local HTTP server that emulates the **Google Play Android Publisher API v3** b
 ### Run locally
 
 ```bash
-git clone <repo>
+git clone https://github.com/bivex/google-billing-mock
 cd playmock
 make run
 ```
