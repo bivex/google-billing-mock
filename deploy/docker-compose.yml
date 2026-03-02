@@ -11,6 +11,7 @@ services:
       - MOCK_LOG_LEVEL=info
       - MOCK_METRICS_ENABLED=true
       - MOCK_MOCK_SCENARIOS_PATH=config/scenarios/default.json
+    user: "0:0"
     volumes:
       - ../config:/root/config:ro
     restart: unless-stopped
