@@ -12,7 +12,7 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /root/
 COPY --from=builder /app/mock-server .
 COPY config/ ./config/
-COPY api/ ./api/
+COPY androidpublisher_v3.json ./
 EXPOSE 8080
 USER nobody:nobody
 ENTRYPOINT ["./mock-server"]
