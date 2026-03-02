@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  mock-server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - MOCK_SERVER_PORT=8080
+      - MOCK_LOG_LEVEL=info
+      - MOCK_METRICS_ENABLED=true
+      - MOCK_MOCK_SCENARIOS_PATH=config/scenarios/default.json
+    volumes:
+      - ../config:/root/config:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
