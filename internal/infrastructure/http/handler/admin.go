@@ -1,7 +1,13 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -124,4 +130,88 @@ func (h *AdminHandler) ListSubscriptions(w http.ResponseWriter, _ *http.Request)
 // ListProducts handles GET /admin/purchases/products
 func (h *AdminHandler) ListProducts(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, h.repo.ListProducts())
+}
+
+// SendWebhook handles POST /admin/send-webhook
+// Builds a Pub/Sub push notification envelope and POSTs it to the configured
+// backend webhook endpoint, simulating Google Cloud Pub/Sub delivery.
+//
+// Request body:
+//
+//	{
+//	  "backendURL":       "http://api:8081",  // optional; defaults to BACKEND_URL env or http://localhost:8081
+//	  "notificationType": 4,                  // 1-13 (see RTDN reference)
+//	  "purchaseToken":    "valid_active_xyz",
+//	  "subscriptionId":   "com.app.premium_monthly",
+//	  "packageName":      "com.yourapp"
+//	}
+func (h *AdminHandler) SendWebhook(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		BackendURL       string `json:"backendURL"`
+		NotificationType int    `json:"notificationType"`
+		PurchaseToken    string `json:"purchaseToken"`
+		SubscriptionID   string `json:"subscriptionId"`
+		PackageName      string `json:"packageName"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	if req.PurchaseToken == "" || req.NotificationType == 0 {
+		writeError(w, http.StatusBadRequest, "purchaseToken and notificationType are required", "INVALID_ARGUMENT")
+		return
+	}
+	if req.PackageName == "" {
+		req.PackageName = "com.yourapp"
+	}
+	if req.SubscriptionID == "" {
+		req.SubscriptionID = "com.yourapp.premium_monthly"
+	}
+
+	backendURL := req.BackendURL
+	if backendURL == "" {
+		if env := os.Getenv("BACKEND_URL"); env != "" {
+			backendURL = env
+		} else {
+			backendURL = "http://localhost:8081"
+		}
+	}
+
+	// Build the DeveloperNotification JSON payload.
+	nowMs := time.Now().UnixMilli()
+	notifPayload, _ := json.Marshal(map[string]interface{}{
+		"packageName":     req.PackageName,
+		"eventTimeMillis": fmt.Sprintf("%d", nowMs),
+		"subscriptionNotification": map[string]interface{}{
+			"version":          "1.0",
+			"notificationType": req.NotificationType,
+			"purchaseToken":    req.PurchaseToken,
+			"subscriptionId":   req.SubscriptionID,
+		},
+	})
+
+	// Wrap in Pub/Sub push envelope.
+	msgID := fmt.Sprintf("mock-msg-%d", nowMs)
+	envelope, _ := json.Marshal(map[string]interface{}{
+		"message": map[string]interface{}{
+			"data":      base64.StdEncoding.EncodeToString(notifPayload),
+			"messageId": msgID,
+		},
+		"subscription": "projects/mock-project/subscriptions/mock-sub",
+	})
+
+	// POST to backend.
+	resp, err := http.Post(backendURL+"/webhook/google", "application/json", bytes.NewReader(envelope)) //nolint:noctx
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "failed to reach backend: "+err.Error(), "UNAVAILABLE")
+		return
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"messageId":       msgID,
+		"backendStatus":   resp.StatusCode,
+		"backendResponse": string(respBody),
+	})
 }

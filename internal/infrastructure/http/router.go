@@ -98,6 +98,8 @@ func NewRouter(
 		r.Get("/purchases/subscriptions", adminH.ListSubscriptions)
 		r.Post("/purchases/products", adminH.SeedProduct)
 		r.Get("/purchases/products", adminH.ListProducts)
+
+		r.Post("/send-webhook", adminH.SendWebhook)
 	})
 
 	return r
